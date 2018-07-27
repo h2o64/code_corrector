@@ -20,6 +20,8 @@ module BitsTools :
 		val hamming_weight_wp3 : int -> int
 		val time : ('a -> 'b) -> 'a -> unit
 		val benchmark : int -> int -> unit
+		val hamming_distance : int -> int -> int
+		val hamming_weight : int -> int
 	end =
 	struct
 
@@ -146,4 +148,11 @@ module BitsTools :
 				(* Skip line *)
 				print_string "\n";
 			done;;
+
+		(* Hamming Weight *)
+		let hamming_weight a = hamming_weight_naive a;;
+
+		(* Hamming distance *)
+		let hamming_distance a b = hamming_weight_naive (b - a);;
+
 	end
