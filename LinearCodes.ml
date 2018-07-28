@@ -122,7 +122,7 @@ module LinearCodes :
 		(* Do the idenity *)
 		ret.(n-k)<-(1 lsl (k-1));
 		for i = (n-k+1) to (n-1) do
-			ret.(i)<-ret.(i-1)/2;
+			ret.(i)<-(ret.(i-1) lsr 2);
 		done;ret;;
 
 	(* Get syndrome *)
