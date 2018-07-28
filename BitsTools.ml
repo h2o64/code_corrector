@@ -10,6 +10,8 @@ module BitsTools :
 		val not_gate : int -> int
 		val right_shift : int -> int -> int
 		val left_shift : int -> int -> int
+		val bin_of_int : int -> string
+		val pow : int -> int -> int
 		val hamming_weight_naive : int -> int
 		val hamming_weight_sparse : int -> int
 		val lg : float -> float
@@ -43,6 +45,24 @@ module BitsTools :
 	(* Shuffle *)
 	let right_shift a dir = a lsr dir;;
 	let left_shift a dir = a lsl dir;;
+
+	(* Taken from https://rosettacode.org/wiki/Binary_digits#OCaml *)
+	let bin_of_int d =
+		if d < 0 then invalid_arg "bin_of_int" else
+		if d = 0 then "0" else
+		let rec aux acc d =
+		  if d = 0 then acc else
+		  aux (string_of_int (d land 1) :: acc) (d lsr 1)
+		in
+		String.concat "" (aux [] d);;
+
+	(* Integer efficient power funtion *)
+	let rec pow a = function
+		| 0 -> 1
+		| 1 -> a
+		| n ->
+			let b = pow a (n / 2) in
+			b * b * (if n mod 2 = 0 then 1 else a);;
 
 	(* Hamming Weight *)
 	(* Iterate everything *)
