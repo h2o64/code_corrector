@@ -2,13 +2,14 @@ module LinearCodes :
 	sig
 		val print_matrix : int array -> unit
 		val getCode : int array -> int -> int
-		val linear_even : int -> int
+		val linear_even : int -> int -> int
 		val systematic_matrix : int -> int -> int array -> int array
-		val matrix_transp : int array -> int array
+		val matrix_transp : int array -> int -> int array
 		val systematic_ctrl_matrix : int -> int -> int array -> int array
-		val getSyndrome : int array -> int -> int
+		val getSyndrome : int array -> int -> int -> int
 		val compute_code : int array -> int -> int
-		val compute_correction : int array -> int -> int
+		val compute_correction : int array -> int -> int -> int
+		val getWord_systematic : int -> int -> int -> int
 	end =
 	struct
 
@@ -65,85 +66,80 @@ module LinearCodes :
 		done;!ret;;
 
 	(* Linearized even code *)
-	let linear_even a =
-		(* Get size of int *)
-		let size = (int_of_float (BitsTools.sizeof a)) in
+	let linear_even a size =
 		(* Make the matrix *)
 		let matrix = Array.make (size+2) 0 in
 		matrix.(0)<-(1 lsl size);
 		for i = 1 to (size) do
-			matrix.(i)<-matrix.(i-1)/2;
+			matrix.(i)<-(matrix.(i-1) lsr 1);
 		done;
 		matrix.(size+1)<-((matrix.(0)*2)-1);
 		(* Apply it on code *)
 		getCode matrix a;;
 
 	(* Create systematic code matrix *)
-	let systematic_matrix n k b =
+	let systematic_matrix n size b =
 		(* Make identity matrix *)
 		let matrix = Array.make n 0 in
-		matrix.(0)<-(1 lsl (k-1));
-		for i = 1 to (k-1) do
-			matrix.(i)<-matrix.(i-1)/2;
+		matrix.(0)<-(1 lsl (size-1));
+		for i = 1 to (size-1) do
+			matrix.(i)<-(matrix.(i-1) lsr 1);
 		done;
 		(* Complete with B matrix *)
 		let rest = Array.length b in
 		for i = 0 to (rest-1) do
-			matrix.(k+i)<-b.(i);
+			matrix.(size+i)<-b.(i);
 		done;matrix;;
 
 	(* Bit-matrix transposition *)
-	let matrix_transp matrix =
+	let matrix_transp matrix size =
 		let n = Array.length matrix in
-		(* Get the max size - Unefficient *)
-		let size = ref (BitsTools.sizeof matrix.(0)) in
-		for i = 1 to (n-1) do
-			let cur_size = (BitsTools.sizeof matrix.(i)) in
-			if cur_size > !size then size := cur_size;
-		done;
 		(* Do the transposition *)
-		let size_i = (int_of_float !size) in
-		let ret = Array.make size_i 0 in
+		let ret = Array.make size 0 in
 		for i = 0 to (n-1) do
-			for j = 0 to (size_i-1) do
-				ret.(j) <- (((matrix.(i) lsr (size_i-j-1)) land 1) lsl (n-i-1)) + ret.(j);
+			for j = 0 to (size-1) do
+				ret.(j) <- (((matrix.(i) lsr (size-j-1)) land 1) lsl (n-i-1)) + ret.(j);
 			done;
 		done;ret;;
 			
 	(* Create systematic control matrix *)
-	let systematic_ctrl_matrix n k b =
+	let systematic_ctrl_matrix n size b =
 		let ret = Array.make n 0 in
 		(* Do the left side of the matrix *)
-		let b_t = matrix_transp b in
-		let b_s = Array.length b in
-		for i = 0 to (b_s-1) do
+		let b_t = matrix_transp b size in
+		for i = 0 to (size-1) do
 			ret.(i) <- b_t.(i);
 		done;
 		(* Do the idenity *)
-		ret.(n-k)<-(1 lsl (k-1));
-		for i = (n-k+1) to (n-1) do
-			ret.(i)<-(ret.(i-1) lsr 2);
+		ret.(size)<-(1 lsl (size-2));
+		for i = (size+1) to (n-1) do
+			ret.(i)<-(ret.(i-1) lsr 1);
 		done;ret;;
 
 	(* Get syndrome *)
-	let getSyndrome h a = getCode (matrix_transp h) a;;
+	let getSyndrome h a size = getCode (matrix_transp h size) a;;
 
 	(* Calculate code of a bit-sequence *)
 	let compute_code g a = getCode g a;;
 
 	(* Find error in a bit sequence and correct it *)
-	let compute_correction h a =
+	let compute_correction h a size =
 		(* Get the syndrome *)
-		let s = getSyndrome h a in
+		let s = getSyndrome h a size in
 		(* Find the error location *)
+		let n = (Array.length h) in
 		let error = ref (-1) in
-		for i = 0 to ((Array.length h)-1) do
+		for i = 0 to (n-1) do
 			if (h.(i) = s) then error := i;
 		done;
 		(* Fix the error *)
 		if (!error = (-1)) then a
-		else
-			(let size = BitsTools.sizeof a in
-			a lxor (1 lsl ((int_of_float size) - !error)));;
+		else (a lxor (1 lsl (n-(!error)-1)));;
+
+	(* Get word for systematic codes *)
+	let getWord_systematic code n size =
+		(* Make a mask and translate it *)
+		let mask = (((pow 2 size)-1) lsl (n-size)) in
+		(code land mask) lsr (n-size);;
 
 	end

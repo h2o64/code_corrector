@@ -4,6 +4,7 @@ open Unix;;
 
 module BitsTools :
 	sig
+		type bit_array = int
 		val or_gate : int -> int -> int
 		val and_gate : int -> int -> int
 		val xor_gate : int -> int -> int
@@ -14,16 +15,13 @@ module BitsTools :
 		val pow : int -> int -> int
 		val hamming_weight_naive : int -> int
 		val hamming_weight_sparse : int -> int
-		val lg : float -> float
-		val sizeof : int -> float
-		val alignment : float -> int ref -> int
 		val hamming_weight_dense : int -> int
-		val hamming_weight_parallel : int -> int
-		val hamming_weight_wp3 : int -> int
+		val hamming_weight_parallel : int -> int -> int
+		val hamming_weight_wp3 : int -> int -> int
 		val time : ('a -> 'b) -> 'a -> unit
-		val benchmark : int -> int -> unit
-		val hamming_distance : int -> int -> int
-		val hamming_weight : int -> int
+		val benchmark : int -> unit
+		val hamming_weight : int -> int -> int
+		val hamming_distance : int -> int -> int -> int
 	end =
 	struct
 
@@ -73,16 +71,6 @@ module BitsTools :
 	let rec hamming_weight_sparse a =
 		if a = 0 then 0
 		else 1 + (hamming_weight_sparse (a land (a-1)));;
-	(* Get the size of the int *)
-	let lg x = ((log x) /. (log 2.));;
-	let sizeof x = floor (lg (float_of_int x)) +. 1.;;
-	let alignment size x =
-		(* Get the closest power of two for size *)
-		let next = (2.**(ceil (lg size))) in
-		(* Align the number *)
-		x := (!x lsl (int_of_float (next -. size)));
-		(* Return the aligned basis *)
-		(int_of_float (2.**next));;
 	(* Dense-ones: Only iterates as many times as there are zero-bits in the integer.*)
 	let hamming_weight_dense a =
 		let rec hamming_weight_dense_aux count a =
@@ -90,43 +78,25 @@ module BitsTools :
 			else (hamming_weight_dense_aux (count-1) (a land (a-1))) in
 		(hamming_weight_dense_aux (8*8-1) (lnot a));;
 	(* Nifty parallel counting. *)
-	let rec hamming_weight_parallel a =
+	let rec hamming_weight_parallel a size =
 		let n = ref a in
-		(* Split the number if it's too large (more than 32 bits long) *)
-		let size = sizeof a in
-		if (size > 32.) then
-			let cut = (floor (size /. 2.)) in
-			let a_low = (a land ((int_of_float (2.**cut))-1)) in
-			let a_high = (a lsr (int_of_float (size -. cut))) in
-			((hamming_weight_parallel a_low) + (hamming_weight_parallel a_high))
-		else
-		(* Get re-alignment goodies *)
-		let align =  alignment size n in
 		(* Do the magic *)
-		let m1 = align / 3 in (* Binary 0101010101... *)
-		let m2 = align / 5 in (* Binary 0011001100... *)
-		let m4 = align / 17 in (* Binary 000011110000 ... *)
+		let size_int = (1 lsl size) in
+		let m1 = size_int / 3 in (* Binary 0101010101... *)
+		let m2 = size_int / 5 in (* Binary 0011001100... *)
+		let m4 = size_int / 17 in (* Binary 000011110000 ... *)
 		n := (!n land m1) + ((!n lsr 1) land m1);
 		n := (!n land m2) + ((!n lsr 2) land m2);
 		n := (!n land m4) + ((!n lsr 4) land m4);
 		!n mod 255;;
 	(* WP3 - Nifty Revised *)
-	let rec hamming_weight_wp3 a =
+	let rec hamming_weight_wp3 a size =
 		let n = ref a in
-		(* Split the number if it's too large (more than 32 bits long) *)
-		let size = sizeof a in
-		if (size > 32.) then
-			let cut = (floor (size /. 2.)) in
-			let a_low = (a land ((int_of_float (2.**cut))-1)) in
-			let a_high = (a lsr (int_of_float (size -. cut))) in
-			((hamming_weight_parallel a_low) + (hamming_weight_parallel a_high))
-		else
-		(* Get re-alignment goodies *)
-		let align =  alignment size n in
 		(* Do the magic *)
-		let m1 = align / 3 in (* Binary 0101010101... *)
-		let m2 = align / 5 in (* Binary 0011001100... *)
-		let m4 = align / 17 in (* Binary 000011110000 ... *)
+		let size_int = (1 lsl size) in
+		let m1 = size_int / 3 in (* Binary 0101010101... *)
+		let m2 = size_int / 5 in (* Binary 0011001100... *)
+		let m4 = size_int / 17 in (* Binary 000011110000 ... *)
 		n := !n - ((!n lsr 1) land m1); (* Put count of each 2 bits into those 2 bits *)
 		n := (!n land m2) + ((!n lsr 2) land m2); (* Put count of each 4 bits into those 4 bits *)
 		n := (!n + (!n lsr 4)) land m4; (* Put count of each 8 bits into those 8 bits *)
@@ -141,38 +111,34 @@ module BitsTools :
 			in res; ();;
 
 		(* Benchmark Hamming Weight Algorithms *)
-		let benchmark bits_length iter =
+		let benchmark iter =
 			(* Get int limit *)
-			let limit = (int_of_float (2.**(float_of_int bits_length))) in
 			for i = 0 to iter do
 				(* Get random int *)
-				let a = (Random.int (limit+1)) in
-				(* Get size *)
-				print_string "Size = ";
-				print_float (sizeof a);
-				(* Naive algorithm *)
-				print_string " | Naive = ";
-				time hamming_weight_naive a;
-				(* Sparse algorithm *)
-				print_string " | Sparse = ";
-				time hamming_weight_sparse a;
-				(* Dense algorithm *)
-				print_string " | Dense = ";
-				time hamming_weight_dense a;
-				(* Parallel algorithm *)
-				print_string " | Parallel = ";
-				time hamming_weight_parallel a;
-				(* WP3 algorithm *)
-				print_string " | WP3 = ";
-				time hamming_weight_wp3 a;
-				(* Skip line *)
-				print_string "\n";
+				let a = (Random.bits ()) in
+				if (a <= 4294967296) then (* Only do 32 bits *)
+					(* Naive algorithm *)
+					(print_string " | Naive = ";
+					time hamming_weight_naive a;
+					(* Sparse algorithm *)
+					print_string " | Sparse = ";
+					time hamming_weight_sparse a;
+					(* Dense algorithm *)
+					print_string " | Dense = ";
+					time hamming_weight_dense a;
+					(* Parallel algorithm *)
+					print_string " | Parallel = ";
+					time (hamming_weight_parallel a) 32;
+					(* WP3 algorithm *)
+					print_string " | WP3 = ";
+					time (hamming_weight_wp3 a) 32;
+					(* Skip line *)
+					print_string "\n";);
 			done;;
 
 		(* Hamming Weight *)
-		let hamming_weight a = hamming_weight_naive a;;
+		let hamming_weight a size = hamming_weight_parallel a size;;
 
 		(* Hamming distance *)
-		let hamming_distance a b = hamming_weight_naive (b - a);;
-
+		let hamming_distance a b size = hamming_weight_parallel (b - a) size;;
 	end
