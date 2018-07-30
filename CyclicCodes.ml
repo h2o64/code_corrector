@@ -7,10 +7,10 @@ let rec gcd a b =
 		| 0 -> b
 		| r -> gcd b r;;
 
-(* Polynome type *)
+(* polynomiale type *)
 type 'a poly = { deg : int ; coef : 'a array };;
 
-(* Null polynom *)
+(* Null polynomial *)
 let null_poly () = {deg = -1 ; coef = [||]};;
 
 (* Multiply with mod 2 *)
@@ -22,7 +22,7 @@ let add_mod2 a b = (a + b) mod 2;;
 (* Sub with mod2 *)
 let sub_mod2 a b = (a - b) mod 2;;
 
-(* Array to polynom *)
+(* Array to polynomial *)
 let poly_of_array arr zero =
 	let getDeg a =
 		let n = (Array.length a) in
@@ -34,7 +34,7 @@ let poly_of_array arr zero =
 	{ deg = (getDeg arr);
 		coef = arr };;
 
-(* Polynoms multiplication - Naive *)
+(* polynomials multiplication - Naive *)
 let mul_poly a b add_op mul_op zero =
 	let ret_deg = if (a.deg < 0) || (b.deg < 0) then (-1) else (a.deg+b.deg) in
 	let ret_coef = Array.make (if ret_deg > 0 then (ret_deg+1) else 0) zero in
@@ -47,7 +47,7 @@ let mul_poly a b add_op mul_op zero =
 		done);
 	{deg = ret_deg ; coef = ret_coef};;
 
-(* Compute cyclotomic polynom *)
+(* Compute cyclotomic polynomial *)
 let c_2 = { Complex.re = 2. ; Complex.im = 0.};;
 let unitary_poly = poly_of_array [|Complex.one|] Complex.zero;;
 let c_pi = { Complex.re = (4.0 *. atan 1.0) ; Complex.im = 0.};;
@@ -64,7 +64,7 @@ let cyclotomic_poly n =
 			ret := mul_poly !ret (poly_of_array [|Complex.neg cur;Complex.one|] Complex.zero)
 							Complex.add Complex.mul Complex.zero;
 	done;
-	(* Cleanup the polynom - FIXME: Slow and dirty *)
+	(* Cleanup the polynomial - FIXME: Slow and dirty *)
 	let ret_new = { deg = !ret.deg ; coef = (Array.make (!ret.deg+1) 0)} in
 	for i = 0 to !ret.deg do
 		if (!ret.coef.(i).re > 0.5) then ret_new.coef.(i)<-1
@@ -86,7 +86,7 @@ let getPolyCodes n =
 let fun_poly f a =
 	{ deg = a.deg ; coef = (Array.map f a.coef) };;
 
-(* Substract polynoms *)
+(* Substract polynomials *)
 let rec sub_int_poly a b =
 	(* Isolated cases *)
 	if a.deg < 0 then fun_poly (~-) b
@@ -109,7 +109,7 @@ let rec sub_int_poly a b =
 					ret_deg := (a.deg-i);
 			done;{deg = !ret_deg ; coef = ret}););;
 
-(* Shift a polynom *)
+(* Shift a polynomial *)
 let shift_poly a n =
 	let new_deg = a.deg + n in
 	(* Copy to right index *)
@@ -118,14 +118,14 @@ let shift_poly a n =
 		new_coef.(n+i)<-a.coef.(i);
 	done;{deg = new_deg ; coef = new_coef};;
 
-(* Print polynom *)
+(* Print polynomial *)
 let print_poly a =
 	for i = 0 to a.deg do
 		print_int a.coef.(a.deg-i);
 		print_string "X^";
 		print_int (a.deg-i);
 		print_string " + ";
-	done;;
+	done;(print_string "\n");;
 
 (* Scalar multiplication for poly *)
 let scalar_poly a l =
@@ -134,7 +134,7 @@ let scalar_poly a l =
 	if l = 0 then null_poly ()
 	else { deg = a.deg ; coef = (Array.map mul_aux a.coef) };;
 
-(* Polynom modulo - Naive *)
+(* polynomial modulo - Naive *)
 let rec mod_poly a n =
 	if (a.deg < n.deg) then a
 	else
@@ -144,17 +144,15 @@ let rec mod_poly a n =
 
 (* Encode word *)
 let encodeWord gen word_p n =
-	(* Make the modulo polynom *)
+	(* Make the modulo polynomial *)
 	let modulo = { deg = n ; coef = (Array.make (n+1) 0) } in
 	modulo.coef.(0)<-(-1);
 	modulo.coef.(n)<-1;
-	(* Multiply the polynom with generator *)
-	let multiplied = (mul_poly word_p gen add_mod2 mul_mod2 0) in
 	(* Make a modulo *)
-	mod_poly multiplied modulo;;
-
-
-
+	let gen_mod = (mod_poly gen modulo) in
+	(* Multiply the polynomial with generator *)
+	let multiplied = (mul_poly word_p gen_mod add_mod2 mul_mod2 0) in
+	multiplied;;
 
 
 
