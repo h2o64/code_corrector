@@ -12,7 +12,16 @@ type 'a poly = { deg : int ; coef : 'a array };;
 
 (* Null polynom *)
 let null_poly () = {deg = -1 ; coef = [||]};;
- 
+
+(* Multiply with mod 2 *)
+let mul_mod2 a b = (a * b) mod 2;;
+
+(* Add with mod 2 *)
+let add_mod2 a b = (a + b) mod 2;;
+
+(* Sub with mod2 *)
+let sub_mod2 a b = (a - b) mod 2;;
+
 (* Array to polynom *)
 let poly_of_array arr zero =
 	let getDeg a =
@@ -87,7 +96,7 @@ let rec sub_int_poly a b =
 		(if (a.deg > b.deg) then
 			let ret = Array.copy a.coef in
 			for i = 0 to b.deg do
-				ret.(i)<-(ret.(i) - b.coef.(i));
+				ret.(i)<-(sub_mod2 ret.(i) b.coef.(i));
 			done;{deg = a.deg ; coef = ret}
 		else if (b.deg > a.deg) then
 			fun_poly (~-) (sub_int_poly b a)
@@ -95,7 +104,7 @@ let rec sub_int_poly a b =
 			(let ret = Array.copy a.coef in
 			let ret_deg = ref (-1) in
 			for i = 0 to a.deg do
-				ret.(a.deg-i)<-(ret.(a.deg-i) - b.coef.(a.deg-i));
+				ret.(a.deg-i)<-(sub_mod2 ret.(a.deg-i) b.coef.(a.deg-i));
 				if not (ret.(a.deg-i) = 0) && (!ret_deg < 0) then
 					ret_deg := (a.deg-i);
 			done;{deg = !ret_deg ; coef = ret}););;
@@ -140,7 +149,7 @@ let encodeWord gen word_p n =
 	modulo.coef.(0)<-(-1);
 	modulo.coef.(n)<-1;
 	(* Multiply the polynom with generator *)
-	let multiplied = (mul_poly word_p gen (+) ( * ) 0) in
+	let multiplied = (mul_poly word_p gen add_mod2 mul_mod2 0) in
 	(* Make a modulo *)
 	mod_poly multiplied modulo;;
 
