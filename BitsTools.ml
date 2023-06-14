@@ -137,8 +137,8 @@ module BitsTools :
 			done;;
 
 		(* Hamming Weight *)
-		let hamming_weight a size = hamming_weight_parallel a size;;
+		let hamming_weight a size = hamming_weight_wp3 a size;;
 
 		(* Hamming distance *)
-		let hamming_distance a b size = hamming_weight_parallel (b - a) size;;
+		let hamming_distance a b size = hamming_weight_wp3 (b - a) size;;
 	end

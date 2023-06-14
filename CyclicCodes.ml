@@ -1,13 +1,4 @@
-(* Use complex module *)
-open Complex;;
-
-(* Greatest Common Divisor *)
-let rec gcd a b =
-	match (a mod b) with
-		| 0 -> b
-		| r -> gcd b r;;
-
-(* polynomiale type *)
+(* Polynomial type *)
 type 'a poly = { deg : int ; coef : 'a array };;
 
 (* Null polynomial *)
@@ -47,31 +38,8 @@ let mul_poly a b add_op mul_op zero =
 		done);
 	{deg = ret_deg ; coef = ret_coef};;
 
-(* Compute cyclotomic polynomial *)
-let c_2 = { Complex.re = 2. ; Complex.im = 0.};;
-let unitary_poly = poly_of_array [|Complex.one|] Complex.zero;;
-let c_pi = { Complex.re = (4.0 *. atan 1.0) ; Complex.im = 0.};;
-let cyclotomic_poly n =
-	(* Quadruple complex multiplication and division *)
-	let quad_mul a b c d e =
-		Complex.div (Complex.mul (Complex.mul a b) (Complex.mul c d)) e in
-	let ret = ref unitary_poly in
-	let c_n = { Complex.re = (float_of_int n) ; Complex.im = 0. } in
-	for k = 1 to n do
-		if ((gcd k n) = 1) then
-			let c_k = { Complex.re = (float_of_int k) ; Complex.im = 0. } in
-			let cur = Complex.exp (quad_mul c_2 Complex.one Complex.i c_k c_n) in
-			ret := mul_poly !ret (poly_of_array [|Complex.neg cur;Complex.one|] Complex.zero)
-							Complex.add Complex.mul Complex.zero;
-	done;
-	(* Cleanup the polynomial - FIXME: Slow and dirty *)
-	let ret_new = { deg = !ret.deg ; coef = (Array.make (!ret.deg+1) 0)} in
-	for i = 0 to !ret.deg do
-		if (!ret.coef.(i).re > 0.5) then ret_new.coef.(i)<-1
-		else if (!ret.coef.(i).re > 0.) then ret_new.coef.(i)<-0
-		else if (!ret.coef.(i).re < (-0.5)) then ret_new.coef.(i)<-(-1)
-		else ret_new.coef.(i)<-0;
-	done;ret_new;;
+(* Cyclotomic Poly - FIXME: URGENTLY *)
+let cyclotomic_poly n = null_poly ();;
 
 (* Get all the possible codes *)
 let getPolyCodes n =
@@ -130,7 +98,7 @@ let print_poly a =
 (* Scalar multiplication for poly *)
 let scalar_poly a l =
 	(* Multiply a number by l *)
-	let mul_aux x = x * l in
+	let mul_aux x = mul_mod2 x l in
 	if l = 0 then null_poly ()
 	else { deg = a.deg ; coef = (Array.map mul_aux a.coef) };;
 
